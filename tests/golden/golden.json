@@ -1,0 +1,20 @@
+[
+  {
+    "name": "fastapi_basics",
+    "docs": [
+      ["1", "FastAPI is a modern, fast web framework for building APIs in Python. It is built on top of Starlette and Pydantic."],
+      ["2", "Chroma is a local vector database that stores embeddings and provides similarity search."]
+    ],
+    "question": "What is FastAPI?",
+    "expected_contains": ["modern", "web framework", "APIs", "Python"]
+  },
+  {
+    "name": "chroma_basics",
+    "docs": [
+      ["a", "Chroma provides a persistent local vector store. It can upsert documents and query by vector similarity."],
+      ["b", "Sentence-transformers models like all-MiniLM-L6-v2 generate embeddings suitable for semantic search."]
+    ],
+    "question": "What does Chroma provide?",
+    "expected_contains": ["persistent", "local", "vector", "store"]
+  }
+]
