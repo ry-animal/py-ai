@@ -1,5 +1,7 @@
+README.md
 pyproject.toml
 src/app/__init__.py
+src/app/agent_service.py
 src/app/ai_service.py
 src/app/config.py
 src/app/dependencies.py
@@ -7,11 +9,13 @@ src/app/logging_middleware.py
 src/app/main.py
 src/app/rag_service.py
 src/app/routers.py
+src/app/routers_agent.py
 src/app/routers_ai.py
 src/app/routers_rag.py
 src/app/schemas.py
 src/app/text_splitter.py
 src/app/utils.py
+src/app/web_search.py
 src/app/providers/anthropic_provider.py
 src/app/providers/base.py
 src/app/providers/ollama_provider.py
@@ -21,6 +25,7 @@ src/py_ai.egg-info/SOURCES.txt
 src/py_ai.egg-info/dependency_links.txt
 src/py_ai.egg-info/requires.txt
 src/py_ai.egg-info/top_level.txt
+tests/test_agent.py
 tests/test_extract_user.py
 tests/test_health.py
 tests/test_rag.py

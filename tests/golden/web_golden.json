@@ -1,0 +1,7 @@
+[
+  {
+    "name": "fastapi_latest_release_notes",
+    "question": "web: FastAPI latest release notes",
+    "expected_contains": ["FastAPI", "release", "notes"]
+  }
+]

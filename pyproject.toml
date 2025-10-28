@@ -20,6 +20,7 @@ dependencies = [
     "ragas>=0.1.6",
     "datasets>=2.19.0",
     "langchain>=0.2.0",
+    "langgraph>=0.2.30",
 ]
 
 [project.optional-dependencies]
@@ -50,5 +51,10 @@ addopts = "-q"
 [build-system]
 requires = ["setuptools>=68.0.0"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+]
 
 

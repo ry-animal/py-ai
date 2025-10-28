@@ -3,11 +3,13 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import router
-from .routers_ai import ai_router
-from .routers_rag import rag_router
 from .config import get_settings
 from .logging_middleware import request_id_middleware
+from .routers import router
+from .routers_agent import agent_router
+from .routers_ai import ai_router
+from .routers_rag import rag_router
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -34,10 +36,9 @@ def create_app() -> FastAPI:
     app.include_router(router)
     app.include_router(ai_router)
     app.include_router(rag_router)
+    app.include_router(agent_router)
 
     return app
 
 
 app = create_app()
-
-

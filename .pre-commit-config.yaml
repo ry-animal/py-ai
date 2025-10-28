@@ -5,11 +5,10 @@ repos:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
-  - repo: https://github.com/pytest-dev/pytest
-    rev: v8.3.3
+  - repo: local
     hooks:
       - id: pytest
-        additional_dependencies: []
-        args: ["-q"]
-
-
+        name: pytest
+        entry: uv run pytest -q
+        language: system
+        pass_filenames: false

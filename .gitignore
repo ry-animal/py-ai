@@ -8,6 +8,7 @@ __pycache__/
 *.log
 dist/
 build/
+.rag_store/
 .env
 
 .claude/

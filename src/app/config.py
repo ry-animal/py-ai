@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,7 +10,7 @@ class AppSettings(BaseSettings):
 
     environment: str = "development"
     log_level: str = "INFO"
-    cors_allow_origins: List[str] = ["*"]
+    cors_allow_origins: list[str] = ["*"]
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     # AI provider defaults
@@ -21,10 +20,12 @@ class AppSettings(BaseSettings):
     streaming_enabled: bool = True
     # Embeddings / RAG
     embedding_model: str = "all-MiniLM-L6-v2"
+    # Web search (Tavily)
+    tavily_api_key: str | None = None
+    max_web_results: int = 3
+    tavily_search_depth: str = "basic"  # "basic" or "advanced"
 
 
 @functools.lru_cache(maxsize=1)
 def get_settings() -> AppSettings:
     return AppSettings()
-
-
