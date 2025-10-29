@@ -1,13 +1,25 @@
 from __future__ import annotations
 
+import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
+import requests
 from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import answer_relevancy, context_precision, context_recall
-import requests
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run RAGAS metrics against the API.")
+    parser.add_argument(
+        "--base-url",
+        default=os.getenv("API_BASE_URL", "http://127.0.0.1:8000"),
+        help="Base URL for the API (can also be set via API_BASE_URL).",
+    )
+    return parser.parse_args()
 
 
 def load_golden(path: Path) -> list[dict[str, Any]]:
@@ -15,8 +27,9 @@ def load_golden(path: Path) -> list[dict[str, Any]]:
 
 
 def main() -> None:
+    args = parse_args()
+    base_url = args.base_url.rstrip("/")
     golden = load_golden(Path("tests/golden/golden.json"))
-    base_url = "http://localhost:8000"
     # Use expected tokens joined as the reference for a toy baseline; answers come from /ask
     records: list[dict[str, Any]] = []
     for case in golden:
@@ -56,5 +69,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

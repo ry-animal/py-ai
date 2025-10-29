@@ -1,12 +1,24 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import json
+import os
 import time
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any
 
 import requests
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run golden-set RAG evaluations against the API.")
+    parser.add_argument(
+        "--base-url",
+        default=os.getenv("API_BASE_URL", "http://127.0.0.1:8000"),
+        help="Base URL for the API (can also be set via API_BASE_URL).",
+    )
+    return parser.parse_args()
 
 
 def load_golden(path: Path) -> list[dict[str, Any]]:
@@ -14,14 +26,14 @@ def load_golden(path: Path) -> list[dict[str, Any]]:
 
 
 def main() -> None:
+    args = parse_args()
+    base_url = args.base_url.rstrip("/")
     golden_path = Path("tests/golden/golden.json")
     data = load_golden(golden_path)
     report_rows: list[dict[str, Any]] = []
-
-    base_url = "http://localhost:8000"
     for case in data:
         name = case["name"]
-        docs: List[Tuple[str, str]] = [(d[0], d[1]) for d in case["docs"]]
+        docs: list[tuple[str, str]] = [(d[0], d[1]) for d in case["docs"]]
         q: str = case["question"]
         expected: list[str] = case["expected_contains"]
 
@@ -63,5 +75,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

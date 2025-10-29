@@ -11,7 +11,7 @@ from app.main import app
 def test_agent_chat_json() -> None:
     client = TestClient(app)
 
-    async def fake_answer(question: str, stream: bool = False):
+    async def fake_answer(question: str, stream: bool = False, session: str | None = None):
         return "hello"
 
     with patch("app.agent_service.AgentService.answer", new=AsyncMock(side_effect=fake_answer)):
@@ -23,7 +23,7 @@ def test_agent_chat_json() -> None:
 def test_agent_chat_stream() -> None:
     client = TestClient(app)
 
-    async def fake_answer(question: str, stream: bool = True):  # type: ignore[override]
+    async def fake_answer(question: str, stream: bool = True, session: str | None = None):  # type: ignore[override]
         async def gen():
             yield "part1"
             yield "part2"

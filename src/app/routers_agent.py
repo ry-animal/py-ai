@@ -4,19 +4,20 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.agent_service import AgentService
+from app.dependencies import get_agent_memory
 from app.web_search import TavilySearch
 
 agent_router = APIRouter()
-agent = AgentService()
+agent = AgentService(memory=get_agent_memory())
 
 
 @agent_router.get("/agent/chat")
-async def agent_chat(q: str, stream: bool | None = None):
+async def agent_chat(q: str, stream: bool | None = None, session: str | None = None):
     effective_stream = stream is True
     if effective_stream:
-        chunks = await agent.answer(q, stream=True)  # type: ignore[assignment]
+        chunks = await agent.answer(q, stream=True, session=session)  # type: ignore[assignment]
         return StreamingResponse(chunks, media_type="text/plain")
-    ans = await agent.answer(q, stream=False)  # type: ignore[assignment]
+    ans = await agent.answer(q, stream=False, session=session)  # type: ignore[assignment]
     return {"answer": ans}
 
 

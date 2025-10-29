@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -9,15 +11,26 @@ from typing import Any
 import requests
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run web agent evaluations against the API.")
+    parser.add_argument(
+        "--base-url",
+        default=os.getenv("API_BASE_URL", "http://127.0.0.1:8000"),
+        help="Base URL for the API (can also be set via API_BASE_URL).",
+    )
+    return parser.parse_args()
+
+
 def load_golden(path: Path) -> list[dict[str, Any]]:
     return json.loads(path.read_text())
 
 
 def main() -> None:
+    args = parse_args()
+    base_url = args.base_url.rstrip("/")
     golden_path = Path("tests/golden/web_golden.json")
     data = load_golden(golden_path)
     report_rows: list[dict[str, Any]] = []
-    base_url = "http://127.0.0.1:8000"
 
     for case in data:
         name = case["name"]

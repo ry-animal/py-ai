@@ -1,0 +1,30 @@
+[
+  {
+    "name": "rag_onboarding_checklist",
+    "question": "What does the handbook say about our onboarding checklist?",
+    "preferred_route": "rag",
+    "docs": [
+      "The company handbook onboarding checklist includes updating your profile, scheduling a buddy coffee, and completing security training."
+    ],
+    "expected_contains": ["onboarding checklist", "buddy coffee", "security training"]
+  },
+  {
+    "name": "rag_vacation_policy",
+    "question": "Summarize the vacation policy for new hires.",
+    "preferred_route": "rag",
+    "docs": [
+      "Vacation policy: New hires accrue 15 days annually, can carry over 5 days, and must coordinate with their manager for time off."
+    ],
+    "expected_contains": ["15 days", "carry over", "coordinate"]
+  },
+  {
+    "name": "web_fastapi_release",
+    "question": "web: FastAPI latest release",
+    "preferred_route": "web",
+    "web_snippets": [
+      "FastAPI 0.115.0 introduces response model improvements and background task fixes."
+    ],
+    "web_direct_answer": "FastAPI 0.115.0 released with response model improvements and bug fixes.",
+    "expected_contains": ["FastAPI 0.115.0", "response model"]
+  }
+]

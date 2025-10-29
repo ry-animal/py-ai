@@ -21,6 +21,7 @@ dependencies = [
     "datasets>=2.19.0",
     "langchain>=0.2.0",
     "langgraph>=0.2.30",
+    "celery[redis]>=5.4.0",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +29,9 @@ dev = [
     "pytest>=8.2.0",
     "ruff>=0.6.9",
     "pre-commit>=3.8.0",
+]
+agent = [
+    "redis>=5.0.0",
 ]
 
 [tool.ruff]
@@ -56,5 +60,3 @@ build-backend = "setuptools.build_meta"
 dev = [
     "pre-commit>=4.3.0",
 ]
-
-

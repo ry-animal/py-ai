@@ -5,15 +5,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .logging_middleware import request_id_middleware
+from .middleware_guardrails import (
+    rate_limit_middleware,
+    refresh_rate_limiter,
+    request_size_middleware,
+)
 from .routers import router
 from .routers_agent import agent_router
 from .routers_ai import ai_router
 from .routers_rag import rag_router
+from .routers_tasks import tasks_router
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="Python AI Learning API", version="0.1.0")
+    refresh_rate_limiter()
 
     app.add_middleware(
         CORSMiddleware,
@@ -23,6 +30,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.middleware("http")(request_size_middleware)
+    app.middleware("http")(rate_limit_middleware)
     app.middleware("http")(request_id_middleware)
 
     @app.get("/health")
@@ -37,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_router)
     app.include_router(rag_router)
     app.include_router(agent_router)
+    app.include_router(tasks_router)
 
     return app
 
