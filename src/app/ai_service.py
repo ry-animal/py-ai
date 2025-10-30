@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncIterator, Callable, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from app.config import get_settings
 from app.providers.anthropic_provider import AnthropicProvider
@@ -19,7 +19,9 @@ class AIService:
         self.has_openai = bool(settings.openai_api_key)
         self.has_anthropic = bool(settings.anthropic_api_key)
         self.openai = OpenAIProvider(settings.openai_api_key) if self.has_openai else None
-        self.anthropic = AnthropicProvider(settings.anthropic_api_key) if self.has_anthropic else None
+        self.anthropic = (
+            AnthropicProvider(settings.anthropic_api_key) if self.has_anthropic else None
+        )
 
     async def _retry(self, func: Callable[[], Awaitable], attempts: int = 2, delay_s: float = 0.5):
         last_exc: Exception | None = None
@@ -29,12 +31,17 @@ class AIService:
             except Exception as exc:  # noqa: BLE001 - surface upstream
                 last_exc = exc
                 await asyncio.sleep(delay_s * (2**i))
-        assert last_exc is not None
+        if last_exc is None:
+            msg = "No exception captured during retry"
+            raise RuntimeError(msg)
         raise last_exc
 
-    async def extract_user(self, text: str, stream: bool = False) -> ExtractedUser | AsyncIterator[str]:
+    async def extract_user(
+        self, text: str, stream: bool = False
+    ) -> ExtractedUser | AsyncIterator[str]:
         # Choose primary based on available keys: prefer OpenAI when configured, else Claude
         if self.has_openai and self.openai is not None:
+
             async def do_openai():
                 return await self.openai.extract_user(text, self.openai_model)
 
@@ -50,7 +57,9 @@ class AIService:
                 if self.has_anthropic and self.anthropic is not None:
                     if stream:
                         return self.anthropic.stream_extract_user(text, self.claude_model)
-                    return await self._retry(lambda: self.anthropic.extract_user(text, self.claude_model))
+                    return await self._retry(
+                        lambda: self.anthropic.extract_user(text, self.claude_model)
+                    )
                 raise
 
         if self.has_anthropic and self.anthropic is not None:
@@ -72,12 +81,12 @@ class AIService:
                 if self.has_anthropic and self.anthropic is not None:
                     if stream:
                         return self.anthropic.stream_answer(question, contexts, self.claude_model)
-                    return await self.anthropic.generate_answer(question, contexts, self.claude_model)
+                    return await self.anthropic.generate_answer(
+                        question, contexts, self.claude_model
+                    )
                 raise
         if self.has_anthropic and self.anthropic is not None:
             if stream:
                 return self.anthropic.stream_answer(question, contexts, self.claude_model)
             return await self.anthropic.generate_answer(question, contexts, self.claude_model)
         raise RuntimeError("No AI provider configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.")
-
-

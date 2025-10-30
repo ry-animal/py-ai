@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
 
@@ -42,12 +42,12 @@ class AnthropicProvider:
                 if hasattr(event, "delta") and getattr(event.delta, "text", None):
                     yield event.delta.text
 
-    async def generate_answer(self, question: str, contexts: List[str], model: str) -> str:
+    async def generate_answer(self, question: str, contexts: list[str], model: str) -> str:
         system = (
             "You are a helpful assistant. Answer the question using ONLY the provided context. "
             "If the answer isn't in the context, say you don't know."
         )
-        context_block = "\n\n".join(f"[Context {i+1}]\n{c}" for i, c in enumerate(contexts))
+        context_block = "\n\n".join(f"[Context {i + 1}]\n{c}" for i, c in enumerate(contexts))
         user = f"Context:\n{context_block}\n\nQuestion: {question}\nAnswer:"
         resp = await self.client.messages.create(
             model=model,
@@ -61,12 +61,14 @@ class AnthropicProvider:
         )
         return text
 
-    async def stream_answer(self, question: str, contexts: List[str], model: str) -> AsyncIterator[str]:
+    async def stream_answer(
+        self, question: str, contexts: list[str], model: str
+    ) -> AsyncIterator[str]:
         system = (
             "You are a helpful assistant. Answer the question using ONLY the provided context. "
             "If the answer isn't in the context, say you don't know."
         )
-        context_block = "\n\n".join(f"[Context {i+1}]\n{c}" for i, c in enumerate(contexts))
+        context_block = "\n\n".join(f"[Context {i + 1}]\n{c}" for i, c in enumerate(contexts))
         user = f"Context:\n{context_block}\n\nQuestion: {question}\nAnswer:"
         stream = await self.client.messages.stream(
             model=model,
@@ -79,5 +81,3 @@ class AnthropicProvider:
             async for event in s:
                 if hasattr(event, "delta") and getattr(event.delta, "text", None):
                     yield event.delta.text
-
-

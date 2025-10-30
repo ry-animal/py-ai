@@ -8,6 +8,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 from app.config import get_settings
+from app.text_splitter import split_into_chunks
 
 
 class RAGService:
@@ -66,3 +67,56 @@ class RAGService:
         for doc, meta in zip(documents, metadatas, strict=False):
             combined.append((doc, meta or {}))
         return combined
+
+    async def ingest_document(self, doc_id: str, text: str, metadata: dict[str, Any]) -> int:
+        """Ingest a document with chunking and metadata."""
+        # Split document into chunks
+        chunks = split_into_chunks(text)
+
+        docs_to_ingest = []
+        for i, chunk in enumerate(chunks):
+            chunk_id = f"{doc_id}::part{i}"
+            chunk_metadata = {
+                **metadata,
+                "document_id": doc_id,
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+            }
+            docs_to_ingest.append((chunk_id, chunk, chunk_metadata))
+
+        return self.ingest(docs_to_ingest)
+
+    def delete_document(self, doc_id: str) -> None:
+        """Delete all chunks for a document."""
+        # Get all documents to find matching chunks
+        all_docs = self.collection.get()
+        doc_ids_to_delete = [
+            doc_id for doc_id in all_docs.get("ids", []) if doc_id.startswith(f"{doc_id}::")
+        ]
+
+        if doc_ids_to_delete:
+            self.collection.delete(ids=doc_ids_to_delete)
+
+    def retrieve_with_sources(self, query: str, k: int = 4):
+        """Retrieve documents with source metadata for citations."""
+        results = self.collection.query(
+            query_texts=[query], n_results=k, include=["documents", "metadatas", "distances"]
+        )
+
+        documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
+        distances = results.get("distances", [[]])[0]
+
+        enriched_results = []
+        for doc, meta, distance in zip(documents, metadatas, distances, strict=False):
+            enriched_results.append(
+                {
+                    "content": doc,
+                    "metadata": meta or {},
+                    "relevance_score": 1 - distance,  # Convert distance to relevance
+                    "source": meta.get("filename", "Unknown") if meta else "Unknown",
+                    "document_id": meta.get("document_id") if meta else None,
+                }
+            )
+
+        return enriched_results

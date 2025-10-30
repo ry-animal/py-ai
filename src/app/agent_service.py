@@ -8,7 +8,6 @@ from langgraph.graph import END, StateGraph
 
 from app.agent_memory import AgentMemory, InMemoryAgentMemory
 from app.ai_service import AIService
-from app.dependencies import get_ai_service
 from app.rag_service import RAGService
 from app.web_search import TavilySearch
 
@@ -19,7 +18,8 @@ class AgentState(TypedDict, total=False):
     log: list[str]
     route: Literal["rag", "web"]
     route_reason: str
-    contexts: list[str]
+    contexts: list[str] | list[dict]
+    sources: list[dict] | None
     direct_answer: str | None
 
 
@@ -33,7 +33,7 @@ class AgentService:
         memory_turns: int = 3,
     ) -> None:
         self.rag = rag or RAGService()
-        self.ai = ai or get_ai_service()
+        self.ai = ai or AIService()
         if web is not None:
             self.web = web
         else:
@@ -62,11 +62,15 @@ class AgentService:
 
         async def rag_node(state: AgentState) -> AgentState:
             question = state["question"]
-            contexts = [c for c in self.rag.retrieve(question) if c]
+            # Use enhanced retrieval with sources
+            enriched_results = self.rag.retrieve_with_sources(question)
+            contexts = [result["content"] for result in enriched_results]
+            sources = enriched_results
             log = state.get("log", [])
-            entry = f"[rag] Retrieved {len(contexts)} context chunk(s)."
+            entry = f"[rag] Retrieved {len(contexts)} context chunk(s) from internal documents."
             return {
                 "contexts": contexts,
+                "sources": sources,
                 "log": log + [entry],
             }
 
@@ -106,13 +110,30 @@ class AgentService:
         lowered = question.lower()
         web_keywords = ["web", "latest", "news", "today", "current", "recent", "update"]
         prefer_web = any(keyword in lowered for keyword in web_keywords) or "http" in lowered
+
+        # Check if we have relevant internal documents first
+        try:
+            internal_results = self.rag.retrieve_with_sources(question, k=2)
+            has_good_internal_match = any(
+                result["relevance_score"] > 0.7 for result in internal_results
+            )
+        except Exception:
+            has_good_internal_match = False
+
         if self.web is None:
             return "rag", "Web search unavailable; using local knowledge base"
+
+        # Prefer internal docs if we have good matches, unless explicitly asking for web
+        if has_good_internal_match and not prefer_web:
+            return "rag", "Found relevant internal documents"
+
         if prefer_web:
             return "web", "Detected recency/web intent"
         if any(isinstance(msg, AIMessage) and "web" in msg.content.lower() for msg in history[-4:]):
             return "web", "Maintaining prior turn web context"
-        return "rag", "Defaulting to RAG for doc-grounded questions"
+
+        # Default to RAG for internal knowledge, web for external questions
+        return "rag", "Using internal knowledge base as primary source"
 
     def _session_key(self, session_id: str | None) -> str:
         return session_id or "default"
@@ -192,7 +213,7 @@ class AgentService:
         else:
             if not contexts:
                 contexts = [
-                    ("[agent] No supporting documents were retrieved;" " replying conservatively.")
+                    ("[agent] No supporting documents were retrieved; replying conservatively.")
                 ]
             answer = await self.ai.generate_answer(question, contexts, stream=False)
             if (not answer or "I don't know" in answer) and direct:

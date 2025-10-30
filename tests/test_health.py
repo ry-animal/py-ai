@@ -15,5 +15,3 @@ def test_ready() -> None:
     res = client.get("/ready")
     assert res.status_code == 200
     assert res.json()["status"] == "ready"
-
-

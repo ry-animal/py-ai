@@ -15,7 +15,9 @@ def test_extract_user_json(monkeypatch) -> None:
 
         return ExtractedUser(name="Jane", email="jane@example.com")
 
-    with patch("app.ai_service.AIService.extract_user", new=AsyncMock(side_effect=fake_extract_user)):
+    with patch(
+        "app.ai_service.AIService.extract_user", new=AsyncMock(side_effect=fake_extract_user)
+    ):
         res = client.post("/extract-user", json={"text": "Jane <jane@example.com>"})
         assert res.status_code == 200
         data = res.json()
@@ -38,4 +40,3 @@ def test_extract_user_stream(monkeypatch) -> None:
         assert res.status_code == 200
         body = res.text
         assert "Jane" in body
-

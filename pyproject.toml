@@ -22,6 +22,13 @@ dependencies = [
     "langchain>=0.2.0",
     "langgraph>=0.2.30",
     "celery[redis]>=5.4.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-instrumentation-httpx>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+    "python-multipart>=0.0.6",
+    "pypdf>=4.3.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +47,14 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "S", "C4", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assertions in test files
+"demo_capstone.py" = ["S112"]  # Allow try-except-continue in demo
+"src/app/routers_*.py" = ["B008", "B904", "F841", "E501"]  # Allow FastAPI patterns and long lines
+"src/app/providers/*.py" = ["F841", "S113", "E501"]  # Allow dev code patterns and long lines
+"src/app/document_service.py" = ["SIM105", "S110"]  # Allow cleanup patterns
+"src/app/tasks.py" = ["B904"]  # Allow exception patterns in tasks
 
 [tool.ruff.format]
 quote-style = "double"

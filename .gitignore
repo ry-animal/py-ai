@@ -11,7 +11,7 @@ build/
 .rag_store/
 .env
 
-.claude/
+#.claude/
 AGENTS.md
 CHECKPOINT.md
 CLAUDE.md

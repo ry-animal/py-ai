@@ -1,3 +1,1 @@
 """App package initialization."""
-
-

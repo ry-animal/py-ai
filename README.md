@@ -1,15 +1,27 @@
-# py-ai
+# Doc-QA Assistant - Python AI Backend Capstone
 
-FastAPI-based AI backend with RAG, structured extraction, and a minimal agent with web search.
+A production-ready document Q&A assistant that intelligently routes queries between internal documents and web search, providing cited responses with conversation continuity. Built as the capstone project for a comprehensive Python AI backend development learning journey.
 
-## Features
-- FastAPI app with health/ready endpoints, structured request logging, and guardrails (size limits + per-client rate limiting)
-- Structured extraction via OpenAI + Instructor (Claude fallback)
-- RAG with Chroma + sentence-transformers (`all-MiniLM-L6-v2`), chunking + cache
-- Agent endpoint that routes between RAG and Tavily web search (JSON fallback)
-- Streaming support for AI answers
-- Celery-backed background jobs (`/rag/reload` queues ingestion by default)
-- Evaluation harnesses (simple, web, agent blended, and RAGAS)
+## 🎯 Capstone Features
+
+### 📄 Document Management
+- **File Upload API**: PDF, TXT, MD support with validation and size limits
+- **Background Processing**: Async document ingestion via Celery workers
+- **Text Extraction**: PDF parsing with metadata preservation
+- **Smart Chunking**: Recursive text splitting with overlap for optimal retrieval
+
+### 🧠 Intelligent Agent System
+- **LangGraph Workflow**: Explicit routing between RAG and web search
+- **Smart Routing**: Prefers internal docs (relevance > 0.7) unless web intent detected
+- **Citation Support**: Links answers back to source documents with relevance scores
+- **Session Management**: Redis-backed conversation history with 24h TTL
+
+### 🚀 Production-Ready Infrastructure  
+- **FastAPI Backend**: Type-safe endpoints with OpenAPI documentation
+- **Multi-Provider AI**: OpenAI primary, Anthropic fallback with graceful degradation
+- **Observability**: OpenTelemetry traces, structured logging, health checks
+- **Security**: Rate limiting, input validation, automated security scanning
+- **Containerization**: Multi-stage Docker builds with health checks
 
 ## Quickstart
 1) Prereqs: Python 3.11+, `uv` installed
@@ -39,44 +51,79 @@ RATE_LIMIT_WINDOW_SECONDS=60
 ```
 4) Run
 ```bash
+# Local development
 make run        # http://127.0.0.1:8000/docs (binds 0.0.0.0)
 make worker     # start Celery worker (requires Redis)
+
+# Or with Docker (recommended)
+docker compose up --build  # http://127.0.0.1:8010/docs
 ```
 
-## Endpoints
-- Health
-  - GET `/health`, GET `/ready`
-- Structured extraction
-  - POST `/extract-user` body: `{ "text": "Jane <jane@example.com>" }`
-- RAG
-  - POST `/rag/reload` body: `[["id","text"], ...]` (chunking on by default, queues Celery unless `background=false`)
-  - GET `/ask?q=...&stream=true|false`
-- Agent
-  - GET `/agent/chat?q=...&stream=true|false`
-  - GET `/agent/debug/web?q=...` (raw Tavily contexts + direct answer)
-- Tasks
-  - POST `/tasks/echo` body: `{ "text": "hello" }`
-  - GET `/tasks/{task_id}` → status/progress/result
+## 🎬 Demo the Capstone
 
-## Examples (cURL)
+Run the complete demonstration that showcases all features:
+
 ```bash
-# RAG load + ask
-curl -s -X POST 'http://127.0.0.1:8000/rag/reload' \
+python demo_capstone.py
+```
+
+This demonstrates:
+- Document upload and processing
+- Intelligent routing between internal docs and web search  
+- Citation support with source tracking
+- Session-based conversation continuity
+- Performance monitoring and evaluation
+
+## 🔗 Key Endpoints
+
+### Document Management
+- **POST** `/docs/upload` - Upload PDF, TXT, MD files with async processing
+- **GET** `/docs/` - List all uploaded documents  
+- **GET** `/docs/{doc_id}` - Get document details
+- **DELETE** `/docs/{doc_id}` - Remove document and cleanup
+
+### Intelligent Chat
+- **POST** `/chat/` - Send message and get AI response with citations
+- **GET** `/chat/stream` - Stream chat responses in real-time
+- **GET** `/chat/sessions/{session_id}/history` - Get conversation history
+- **DELETE** `/chat/sessions/{session_id}` - Clear chat session
+
+### Legacy Endpoints (still available)
+- **GET** `/health`, `/ready` - System health checks
+- **POST** `/extract-user` - Structured data extraction
+- **POST** `/rag/reload` - Direct RAG document loading
+- **GET** `/ask` - Basic Q&A without citations
+- **GET** `/agent/chat` - Agent chat without enhanced features
+
+## 📚 Usage Examples
+
+### Document Upload & Chat
+```bash
+# Upload a document (using Docker port 8010)
+curl -X POST http://127.0.0.1:8010/docs/upload \
+  -F "file=@demo_docs/company_handbook.md"
+
+# Chat with citations
+curl -X POST http://127.0.0.1:8010/chat/ \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What are the company core values?"}'
+
+# Stream chat response  
+curl -N http://127.0.0.1:8010/chat/stream?q=What%20benefits%20do%20employees%20get
+
+# Get conversation history
+curl http://127.0.0.1:8010/chat/sessions/demo_session/history
+```
+
+### Legacy RAG API
+```bash
+# Direct document loading
+curl -X POST http://127.0.0.1:8010/rag/reload \
   -H 'Content-Type: application/json' \
-  -d '[["1","FastAPI is a modern, fast web framework for building APIs."]]'
+  -d '[["1","FastAPI is a modern web framework."]]'
 
-curl -s -N 'http://127.0.0.1:8000/ask?q=What%20is%20FastAPI%3F&stream=true'
-
-# Agent web (JSON)
-curl -s 'http://127.0.0.1:8000/agent/chat?q=web%3A%20FastAPI%20latest%20release%20notes'
-
-# Background reload + status
-curl -s -X POST 'http://127.0.0.1:8000/rag/reload' \
-  -H 'Content-Type: application/json' \
-  -d '[["batch1","Document text..."]]' \
-  | jq
-
-curl -s 'http://127.0.0.1:8000/tasks/<task_id>' | jq
+# Basic Q&A
+curl "http://127.0.0.1:8010/ask?q=What%20is%20FastAPI&stream=true"
 ```
 
 ## Dev commands
@@ -94,16 +141,57 @@ make worker    # Celery worker (background jobs)
 
 Set `API_BASE_URL` when running against Docker compose (e.g. `make eval API_BASE_URL=http://127.0.0.1:8010`).
 
-## Docker / Compose
-```bash
-# Build runtime image
-docker build -t py-ai:latest .
+## 🐳 Docker Deployment
 
-# Or run API + worker + redis together (API on http://127.0.0.1:8010)
-docker compose up --build
+```bash
+# Production deployment (recommended)
+docker compose up --build  # API on http://127.0.0.1:8010
+
+# Or build individual images
+docker build --target prod -t py-ai:latest .
+docker build --target worker -t py-ai-worker:latest .
 ```
 
-## Notes
-- Local vector DB is stored in `.rag_store/` (ignored).
-- Streaming returns text/plain; non-stream returns JSON with `answer` and/or `contexts`.
-- Request guardrails: requests larger than `MAX_REQUEST_BODY_BYTES` receive HTTP 413; exceeding the per-client rate limit yields HTTP 429 with a `Retry-After` header.
+The Docker setup includes:
+- **Multi-stage builds**: Optimized for production with non-root users
+- **Health checks**: Built-in monitoring for orchestration
+- **Service dependencies**: Redis, API, and worker with proper startup order
+- **Volume mounts**: Persistent storage for documents and evaluation reports
+
+## 📋 Architecture & Documentation
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Complete system design and data flow
+- **[PORTFOLIO.md](PORTFOLIO.md)**: Executive summary and achievements  
+- **[CAPSTONE.md](CAPSTONE.md)**: Project specification and requirements
+- **[LEARNINGS.md](LEARNINGS.md)**: Technical insights and best practices
+- **[CHECKPOINT.md](CHECKPOINT.md)**: Development progress and milestones
+
+## 🎓 Learning Journey
+
+This project represents the capstone of an 8-week Python AI backend development study plan:
+
+1. **Phase 0-1**: Environment setup and Python fluency
+2. **Phase 2**: FastAPI backend with typed endpoints  
+3. **Phase 3**: Structured AI output with Instructor
+4. **Phase 4**: RAG pipeline with vector database
+5. **Phase 5**: Agent system with LangGraph
+6. **Phase 6**: Production deployment and observability
+7. **Capstone**: Complete Doc-QA Assistant with citations
+
+## 📊 Evaluation & Metrics
+
+The system includes comprehensive evaluation harnesses:
+
+```bash
+make eval       # Basic RAG evaluation
+make ragas      # Semantic evaluation metrics  
+make agent-eval # Agent routing accuracy
+make weval      # Web search quality
+```
+
+Reports are generated in `portfolio/` for tracking performance over time.
+
+---
+
+**Built with**: FastAPI, LangGraph, ChromaDB, OpenTelemetry, Docker, Redis, Celery  
+**Demonstrates**: Production-ready Python AI backend development from design to deployment

@@ -15,5 +15,3 @@ def test_request_id_generated_when_missing() -> None:
     res = client.get("/health")
     assert res.status_code == 200
     assert res.headers.get("x-request-id")
-
-

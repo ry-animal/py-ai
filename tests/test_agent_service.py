@@ -20,6 +20,17 @@ class FakeRAG:
         self.queries.append(query)
         return self.contexts
 
+    def retrieve_with_sources(self, query: str, k: int = 4) -> list[dict]:  # noqa: ARG002 - signature parity
+        self.queries.append(query)
+        return [
+            {
+                "content": context,
+                "metadata": {"source": f"test_doc_{i}", "document_id": f"doc_{i}"},
+                "relevance_score": 0.8,
+            }
+            for i, context in enumerate(self.contexts)
+        ]
+
 
 class FakeAI:
     def __init__(self, answer: str = "ok", stream_chunks: list[str] | None = None) -> None:
