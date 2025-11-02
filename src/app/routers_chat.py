@@ -72,7 +72,8 @@ async def chat(
             context_with_sources = []
             for i, source in enumerate(sources):
                 context_with_sources.append(
-                    f"[Source {i + 1}: {source.get('source', 'Unknown')}]\n{source.get('content', '')}"
+                    f"[Source {i + 1}: {source.get('source', 'Unknown')}]\n"
+                    f"{source.get('content', '')}"
                 )
             formatted_contexts = "\n\n".join(context_with_sources)
         else:
@@ -82,7 +83,10 @@ async def chat(
 
         # Add citation instruction
         if sources:
-            citation_prompt = "\n\nWhen referencing information, please cite your sources using [Source X] notation."
+            citation_prompt = (
+                "\n\nWhen referencing information, please cite your sources "
+                "using [Source X] notation."
+            )
             answer = await agent_service.ai.generate_answer(
                 request.message + citation_prompt, [formatted_contexts]
             )

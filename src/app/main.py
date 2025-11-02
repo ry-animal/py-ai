@@ -15,7 +15,10 @@ from .routers_agent import agent_router
 from .routers_ai import ai_router
 from .routers_chat import router as chat_router
 from .routers_docs import router as docs_router
+from .routers_hybrid_agent import hybrid_agent_router
+from .routers_pydantic_agent import pydantic_agent_router
 from .routers_rag import rag_router
+from .routers_smart_orchestrator import orchestrator_router
 from .routers_tasks import tasks_router
 from .telemetry import instrument_app, setup_telemetry
 
@@ -53,6 +56,9 @@ def create_app() -> FastAPI:
     app.include_router(ai_router)
     app.include_router(rag_router)
     app.include_router(agent_router)
+    app.include_router(pydantic_agent_router)
+    app.include_router(hybrid_agent_router)
+    app.include_router(orchestrator_router)
     app.include_router(tasks_router)
     app.include_router(docs_router)
     app.include_router(chat_router)

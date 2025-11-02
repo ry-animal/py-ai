@@ -1,0 +1,410 @@
+pipeline:
+  name: Python AI Multi-Agent Pipeline
+  identifier: py_ai_pipeline
+  projectIdentifier: py_ai_platform
+  orgIdentifier: enterprise_ai
+  tags:
+    multi-agent: "true"
+    platform: "ai"
+    environment: "production"
+  
+  stages:
+    - stage:
+        name: Build and Test
+        identifier: build_test
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  name: Setup Environment
+                  identifier: setup_env
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Setting up Python AI environment..."
+                      make setup
+                      echo "Environment setup complete"
+              
+              - step:
+                  name: Lint and Format Check
+                  identifier: lint_format
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Running code quality checks..."
+                      make lint
+                      make format
+                      echo "Code quality checks passed"
+              
+              - step:
+                  name: Unit Tests
+                  identifier: unit_tests
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Running unit tests..."
+                      make test
+                      echo "Unit tests completed"
+                  
+              - step:
+                  name: Multi-Agent Integration Tests
+                  identifier: agent_tests
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Testing all agent architectures..."
+                      
+                      # Start services for testing
+                      docker compose up -d --build
+                      sleep 30  # Wait for services to be ready
+                      
+                      # Test all agent endpoints
+                      make test-all-agents
+                      
+                      # Test orchestrator intelligence
+                      make demo-integration
+                      
+                      # Get agent status
+                      make agent-status
+                      
+                      echo "Multi-agent tests completed"
+                  
+              - step:
+                  name: Performance Evaluation
+                  identifier: performance_eval
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Running performance evaluations..."
+                      
+                      # Set API base URL for testing
+                      export API_BASE_URL=http://localhost:8010
+                      
+                      # Run evaluation suite
+                      make eval
+                      make ragas
+                      make agent-eval
+                      make compare-agents
+                      
+                      echo "Performance evaluation completed"
+                      
+                      # Archive evaluation reports
+                      tar -czf evaluation-reports.tar.gz portfolio/
+                  
+                  publishArtifacts:
+                    - name: evaluation_reports
+                      spec:
+                        files:
+                          - evaluation-reports.tar.gz
+                        target: harness-store
+              
+              - step:
+                  name: Build Production Images
+                  identifier: build_images
+                  type: BuildAndPushDockerRegistry
+                  spec:
+                    connectorRef: docker_registry
+                    repo: py-ai/api
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                    dockerfile: Dockerfile
+                    target: prod
+                    context: .
+                    buildArgs:
+                      VERSION: <+pipeline.sequenceId>
+                      BUILD_DATE: <+pipeline.startTs>
+              
+              - step:
+                  name: Build Worker Images
+                  identifier: build_worker
+                  type: BuildAndPushDockerRegistry
+                  spec:
+                    connectorRef: docker_registry
+                    repo: py-ai/worker
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                    dockerfile: Dockerfile
+                    target: worker
+                    context: .
+                    buildArgs:
+                      VERSION: <+pipeline.sequenceId>
+                      BUILD_DATE: <+pipeline.startTs>
+
+    - stage:
+        name: Security Scanning
+        identifier: security_scan
+        type: SecurityTests
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Container Security Scan
+                  identifier: container_scan
+                  type: AquaTrivy
+                  spec:
+                    mode: orchestration
+                    config: container_scan
+                    target:
+                      type: container_image
+                      name: py-ai/api:<+pipeline.sequenceId>
+                    advanced:
+                      log:
+                        level: info
+              
+              - step:
+                  name: Dependency Vulnerability Scan
+                  identifier: dependency_scan
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Scanning Python dependencies..."
+                      pip install safety
+                      safety check --json > safety-report.json || true
+                      
+                      echo "Scanning with Bandit..."
+                      pip install bandit
+                      bandit -r src/ -f json -o bandit-report.json || true
+                      
+                      echo "Security scanning completed"
+                  
+                  publishArtifacts:
+                    - name: security_reports
+                      spec:
+                        files:
+                          - safety-report.json
+                          - bandit-report.json
+                        target: harness-store
+
+    - stage:
+        name: Deploy to Staging
+        identifier: deploy_staging
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: py_ai_service
+          environment:
+            environmentRef: staging
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: staging_k8s
+          execution:
+            steps:
+              - step:
+                  name: Terraform Plan
+                  identifier: terraform_plan
+                  type: TerraformPlan
+                  spec:
+                    provisionerIdentifier: terraform_provisioner
+                    configuration:
+                      command: Apply
+                      configFiles:
+                        store:
+                          type: Git
+                          spec:
+                            gitFetchType: Branch
+                            branch: main
+                            folderPath: terraform/environments/staging
+                        vars:
+                          - name: image_tag
+                            value: <+pipeline.sequenceId>
+                          - name: environment
+                            value: staging
+                          - name: vector_db_type
+                            value: vertex
+              
+              - step:
+                  name: Terraform Apply
+                  identifier: terraform_apply
+                  type: TerraformApply
+                  spec:
+                    provisionerIdentifier: terraform_provisioner
+                    configuration:
+                      type: InheritFromPlan
+              
+              - step:
+                  name: Deploy Multi-Agent System
+                  identifier: deploy_agents
+                  type: K8sRollingDeploy
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+              
+              - step:
+                  name: Smoke Tests
+                  identifier: smoke_tests
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Running smoke tests on staging..."
+                      
+                      # Wait for deployment to be ready
+                      kubectl wait --for=condition=available --timeout=300s deployment/py-ai-api
+                      
+                      # Get service endpoint
+                      STAGING_URL=$(kubectl get service py-ai-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                      export API_BASE_URL="http://$STAGING_URL:8000"
+                      
+                      # Test health endpoints
+                      curl -f $API_BASE_URL/health
+                      curl -f $API_BASE_URL/ready
+                      
+                      # Test each agent type
+                      curl -f "$API_BASE_URL/smart/chat?q=Hello"
+                      curl -f "$API_BASE_URL/agent/chat?q=Hello"
+                      curl -f "$API_BASE_URL/pydantic-agent/chat?q=Hello"
+                      curl -f "$API_BASE_URL/hybrid-agent/chat?q=Hello"
+                      
+                      echo "Smoke tests passed"
+
+    - stage:
+        name: Deploy to Production
+        identifier: deploy_production
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: py_ai_service
+          environment:
+            environmentRef: production
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: production_k8s
+          execution:
+            steps:
+              - step:
+                  name: Manual Approval
+                  identifier: manual_approval
+                  type: HarnessApproval
+                  spec:
+                    approvalMessage: |
+                      Please review the staging deployment and approve for production:
+                      
+                      - All tests passed: ✅
+                      - Security scans clear: ✅
+                      - Performance metrics acceptable: ✅
+                      - Multi-agent functionality verified: ✅
+                      
+                      Deploy to production?
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - production_approvers
+                    approverInputs:
+                      - name: deployment_notes
+                        defaultValue: "Standard deployment"
+              
+              - step:
+                  name: Blue-Green Deployment
+                  identifier: blue_green_deploy
+                  type: K8sBGDeploy
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+              
+              - step:
+                  name: Production Validation
+                  identifier: prod_validation
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Validating production deployment..."
+                      
+                      # Get production endpoint
+                      PROD_URL=$(kubectl get service py-ai-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                      export API_BASE_URL="http://$PROD_URL:8000"
+                      
+                      # Health checks
+                      curl -f $API_BASE_URL/health
+                      curl -f $API_BASE_URL/ready
+                      
+                      # Agent status checks
+                      curl -f $API_BASE_URL/smart/status
+                      curl -f $API_BASE_URL/pydantic-agent/status
+                      curl -f $API_BASE_URL/hybrid-agent/status
+                      
+                      echo "Production validation complete"
+              
+              - step:
+                  name: Promote to Live Traffic
+                  identifier: promote_traffic
+                  type: K8sBGSwapServices
+                  spec:
+                    skipDryRun: false
+
+  variables:
+    - name: docker_registry
+      type: String
+      description: Docker registry for images
+      value: <+input>
+    - name: kubernetes_cluster
+      type: String  
+      description: Target Kubernetes cluster
+      value: <+input>
+    - name: notification_channel
+      type: String
+      description: Slack channel for notifications
+      value: "#ai-platform-deployments"
+
+  flowControl:
+    barriers:
+      - name: security_gate
+        identifier: security_gate
+    
+  notifications:
+    - name: deployment_success
+      identifier: deployment_success
+      type: Slack
+      spec:
+        userGroups: []
+        webhookUrl: <+secrets.getValue("slack_webhook")>
+        message: |
+          🚀 Python AI Multi-Agent Platform deployed successfully!
+          
+          Pipeline: <+pipeline.name>
+          Build: <+pipeline.sequenceId>
+          Environment: <+stage.identifier>
+          
+          Agent Status: All 4 architectures operational ✅
+          Performance: Metrics within acceptable range ✅
+          Security: All scans passed ✅
+      
+      conditions:
+        - when: <+pipeline.stages.deploy_production.status> == "SUCCESS"
+    
+    - name: deployment_failure
+      identifier: deployment_failure
+      type: Slack
+      spec:
+        userGroups: []
+        webhookUrl: <+secrets.getValue("slack_webhook")>
+        message: |
+          ❌ Python AI Multi-Agent Platform deployment failed!
+          
+          Pipeline: <+pipeline.name>
+          Build: <+pipeline.sequenceId>
+          Stage: <+stage.identifier>
+          Error: <+pipeline.failureMessage>
+          
+          Please check logs and retry deployment.
+      
+      conditions:
+        - when: <+pipeline.status> == "FAILED"

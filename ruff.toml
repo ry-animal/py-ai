@@ -1,0 +1,19 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "B", "UP", "SIM"]
+ignore = [
+    "S608",  # SQL injection detection - false positives with parameterized queries
+    "E722",  # Bare except statements - acceptable for specific error handling cases
+    "B008",  # FastAPI Depends in defaults is standard practice
+    "B904",  # Exception chaining not always needed
+    "F841",  # Unused variables - often temp in development
+    "SIM105", # Try-except-pass is sometimes clearer than suppress
+]
+
+[lint.per-file-ignores]
+"tests/test_*.py" = ["F841", "B008", "B904"]  # Allow unused variables and other test patterns
+"src/app/database/*.py" = ["S608", "E722"]  # Allow SQL construction and bare except in db adapters
+"src/app/routers_*.py" = ["B008"]  # Allow FastAPI Depends patterns
+"src/app/*_service.py" = ["B904"]  # Allow simpler exception handling in services

@@ -28,12 +28,40 @@ Requires-Dist: opentelemetry-instrumentation-httpx>=0.41b0
 Requires-Dist: opentelemetry-exporter-otlp>=1.20.0
 Requires-Dist: python-multipart>=0.0.6
 Requires-Dist: pypdf>=4.3.0
+Requires-Dist: pydantic-ai>=1.9.0
+Requires-Dist: ag-ui-protocol>=0.1.9
+Requires-Dist: motor>=3.5.0
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: redis>=5.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.2.0; extra == "dev"
 Requires-Dist: ruff>=0.6.9; extra == "dev"
 Requires-Dist: pre-commit>=3.8.0; extra == "dev"
 Provides-Extra: agent
 Requires-Dist: redis>=5.0.0; extra == "agent"
+Provides-Extra: vertex
+Requires-Dist: google-cloud-aiplatform>=1.40.0; extra == "vertex"
+Requires-Dist: google-cloud-storage>=2.10.0; extra == "vertex"
+Provides-Extra: snowflake
+Requires-Dist: snowflake-connector-python>=3.0.0; extra == "snowflake"
+Provides-Extra: cockroach
+Requires-Dist: asyncpg>=0.29.0; extra == "cockroach"
+Requires-Dist: psycopg2-binary>=2.9.0; extra == "cockroach"
+Provides-Extra: enterprise
+Requires-Dist: google-cloud-aiplatform>=1.40.0; extra == "enterprise"
+Requires-Dist: snowflake-connector-python>=3.0.0; extra == "enterprise"
+Requires-Dist: psycopg2-binary>=2.9.0; extra == "enterprise"
+Requires-Dist: prometheus-client>=0.19.0; extra == "enterprise"
+Requires-Dist: structlog>=23.2.0; extra == "enterprise"
+Provides-Extra: all
+Requires-Dist: google-cloud-aiplatform>=1.40.0; extra == "all"
+Requires-Dist: snowflake-connector-python>=3.0.0; extra == "all"
+Requires-Dist: psycopg2-binary>=2.9.0; extra == "all"
+Requires-Dist: prometheus-client>=0.19.0; extra == "all"
+Requires-Dist: structlog>=23.2.0; extra == "all"
+Requires-Dist: pytest>=8.2.0; extra == "all"
+Requires-Dist: ruff>=0.6.9; extra == "all"
+Requires-Dist: pre-commit>=3.8.0; extra == "all"
 
 # Doc-QA Assistant - Python AI Backend Capstone
 
@@ -47,8 +75,10 @@ A production-ready document Q&A assistant that intelligently routes queries betw
 - **Text Extraction**: PDF parsing with metadata preservation
 - **Smart Chunking**: Recursive text splitting with overlap for optimal retrieval
 
-### 🧠 Intelligent Agent System
-- **LangGraph Workflow**: Explicit routing between RAG and web search
+### 🧠 Multi-Agent AI System
+- **Four Agent Architectures**: LangGraph, Pydantic-AI, Hybrid, and Smart Orchestrator
+- **Intelligent Routing**: Task-aware agent selection with fallback mechanisms
+- **Type-Safe Operations**: Structured output validation and modern patterns
 - **Smart Routing**: Prefers internal docs (relevance > 0.7) unless web intent detected
 - **Citation Support**: Links answers back to source documents with relevance scores
 - **Session Management**: Redis-backed conversation history with 24h TTL
@@ -119,28 +149,49 @@ This demonstrates:
 - **GET** `/docs/{doc_id}` - Get document details
 - **DELETE** `/docs/{doc_id}` - Remove document and cleanup
 
-### Intelligent Chat
+### Multi-Agent Chat System
+
+#### 🎯 Smart Orchestrator (Recommended)
+- **POST/GET** `/smart/chat` - Intelligent agent selection based on task analysis
+- **POST** `/smart/analyze` - Preview agent selection without execution
+- **GET** `/smart/status` - Orchestrator status and capabilities
+- **GET** `/smart/agents/comparison` - Compare all available agents
+
+#### 🔬 LangGraph Agent (Complex Workflows)
+- **POST/GET** `/agent/chat` - Complex multi-step workflows with state management
+- **GET** `/agent/status` - LangGraph agent status and capabilities
+
+#### 🏗️ Pydantic-AI Agent (Type-Safe & Structured)
+- **POST/GET** `/pydantic-agent/chat` - Type-safe operations with structured output
+- **GET** `/pydantic-agent/status` - Pydantic-AI agent status
+- **GET** `/pydantic-agent/ag-ui` - AG-UI protocol compatibility endpoint
+
+#### ⚡ Hybrid Agent (Best of Both Worlds)
+- **POST/GET** `/hybrid-agent/chat` - LangGraph workflows + Pydantic-AI tools
+- **GET** `/hybrid-agent/status` - Hybrid agent status and architecture
+- **GET** `/hybrid-agent/architecture` - Detailed integration patterns
+
+### Enhanced Chat Interface
 - **POST** `/chat/` - Send message and get AI response with citations
 - **GET** `/chat/stream` - Stream chat responses in real-time
 - **GET** `/chat/sessions/{session_id}/history` - Get conversation history
 - **DELETE** `/chat/sessions/{session_id}` - Clear chat session
 
-### Legacy Endpoints (still available)
+### System Endpoints
 - **GET** `/health`, `/ready` - System health checks
 - **POST** `/extract-user` - Structured data extraction
 - **POST** `/rag/reload` - Direct RAG document loading
 - **GET** `/ask` - Basic Q&A without citations
-- **GET** `/agent/chat` - Agent chat without enhanced features
 
 ## 📚 Usage Examples
 
-### Document Upload & Chat
+### Document Upload & Enhanced Chat
 ```bash
 # Upload a document (using Docker port 8010)
 curl -X POST http://127.0.0.1:8010/docs/upload \
   -F "file=@demo_docs/company_handbook.md"
 
-# Chat with citations
+# Enhanced chat with citations
 curl -X POST http://127.0.0.1:8010/chat/ \
   -H "Content-Type: application/json" \
   -d '{"message": "What are the company core values?"}'
@@ -150,6 +201,55 @@ curl -N http://127.0.0.1:8010/chat/stream?q=What%20benefits%20do%20employees%20g
 
 # Get conversation history
 curl http://127.0.0.1:8010/chat/sessions/demo_session/history
+```
+
+### Multi-Agent System Usage
+
+#### Smart Orchestrator (Automatic Selection)
+```bash
+# Let the orchestrator choose the best agent
+curl "http://127.0.0.1:8010/smart/chat?q=What%20is%20Python?"
+
+# Analyze task without execution
+curl -X POST http://127.0.0.1:8010/smart/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Extract user data in JSON format"}'
+
+# Compare all available agents
+curl http://127.0.0.1:8010/smart/agents/comparison
+
+# Force specific agent for testing
+curl -X POST http://127.0.0.1:8010/smart/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Hello", "force_agent": "pydantic_ai"}'
+```
+
+#### Individual Agent Usage
+```bash
+# LangGraph Agent (complex workflows)
+curl "http://127.0.0.1:8010/agent/chat?q=Analyze%20and%20create%20a%20step-by-step%20plan"
+
+# Pydantic-AI Agent (structured output)
+curl "http://127.0.0.1:8010/pydantic-agent/chat?q=What%20is%20FastAPI?"
+
+# Hybrid Agent (workflow + type safety)
+curl "http://127.0.0.1:8010/hybrid-agent/chat?q=Search%20docs%20and%20format%20results"
+
+# Check agent status
+curl http://127.0.0.1:8010/pydantic-agent/status
+curl http://127.0.0.1:8010/hybrid-agent/status
+```
+
+#### Testing All Agents
+```bash
+# Test all agent architectures
+make test-all-agents
+
+# Get agent status summary
+make agent-status
+
+# Run integration demo
+make demo-integration
 ```
 
 ### Legacy RAG API
@@ -165,15 +265,31 @@ curl "http://127.0.0.1:8010/ask?q=What%20is%20FastAPI&stream=true"
 
 ## Dev commands
 ```bash
-make run       # start API
-make test      # run tests
-make lint      # ruff check
-make format    # ruff format
-make eval      # RAG simple eval → portfolio/eval_report.csv
-make weval     # Web agent eval → portfolio/web_eval_report.csv
-make ragas     # RAGAS metrics → portfolio/ragas_report.csv
-make agent-eval # Blended agent eval → portfolio/agent_eval_report.csv
-make worker    # Celery worker (background jobs)
+# Core Development
+make run           # start API
+make test          # run tests
+make lint          # ruff check
+make format        # ruff format
+make worker        # Celery worker (background jobs)
+make setup         # install dependencies and pre-commit hooks
+
+# Development Workflow Testing
+source scripts/py-dev-workflow.sh  # comprehensive workflow validation
+# Runs: health check → agent availability → smart routing → chat functionality
+
+# Multi-Agent Testing
+make test-all-agents    # test all 4 agent architectures
+make test-hybrid        # test hybrid agent specifically
+make test-smart         # test smart orchestrator
+make agent-status       # get status summary of all agents
+make demo-integration   # comprehensive multi-agent demo
+
+# Evaluation & Metrics
+make eval          # RAG simple eval → portfolio/eval_report.csv
+make weval         # Web agent eval → portfolio/web_eval_report.csv
+make ragas         # RAGAS metrics → portfolio/ragas_report.csv
+make agent-eval    # Blended agent eval → portfolio/agent_eval_report.csv
+make compare-agents # Compare agent performance
 ```
 
 Set `API_BASE_URL` when running against Docker compose (e.g. `make eval API_BASE_URL=http://127.0.0.1:8010`).
@@ -195,25 +311,177 @@ The Docker setup includes:
 - **Service dependencies**: Redis, API, and worker with proper startup order
 - **Volume mounts**: Persistent storage for documents and evaluation reports
 
+## 🏢 Enterprise Deployment
+
+### Quick Enterprise Setup
+
+```bash
+# 1. Setup enterprise dependencies
+uv add --group enterprise
+
+# 2. Configure enterprise environment
+cp .env.enterprise.example .env
+# Edit .env with your database URLs and API keys
+
+# 3. Choose your vector database
+export VECTOR_DB_TYPE=vertex     # or snowflake, cockroach
+export GCP_PROJECT_ID=your-project-id
+
+# 4. Deploy with Terraform
+cd terraform/environments/staging
+terraform init
+terraform plan
+terraform apply
+```
+
+### Enterprise Features
+
+**🎯 Multi-Cloud Vector Databases**
+- **Vertex AI**: Production-ready with auto-scaling
+- **Snowflake Cortex**: Data warehouse + vectors 
+- **CockroachDB**: SQL + vectors (Bonus! 🎯)
+- **ChromaDB**: Local development fallback
+
+**🔄 Harness CI/CD Pipeline**
+- Multi-agent testing automation
+- Security scanning (containers + dependencies)
+- Blue-green production deployment
+- Automatic rollback on failure
+
+**📊 Enterprise Observability**
+- OpenTelemetry distributed tracing
+- PostgreSQL metrics and audit logging
+- MongoDB document analytics
+- Agent performance dashboards
+
+**🔐 Production Security**
+- Container vulnerability scanning
+- Dependency security analysis
+- Rate limiting and request validation
+- Secret management integration
+
+### Database Configuration
+
+```bash
+# Enterprise Database Stack
+MONGODB_URL=mongodb+srv://cluster/py_ai_platform
+POSTGRES_URL=postgresql://host:5432/py_ai_metadata
+REDIS_URL=redis://cluster:6379/0
+
+# Vector Database (choose one)
+VECTOR_DB_TYPE=vertex
+GCP_PROJECT_ID=your-project-id
+VERTEX_INDEX_ENDPOINT_ID=your-endpoint
+
+# Or Snowflake
+VECTOR_DB_TYPE=snowflake
+SNOWFLAKE_ACCOUNT=your-account.snowflakecomputing.com
+
+# Or CockroachDB (Bonus!)
+VECTOR_DB_TYPE=cockroach
+COCKROACH_CONNECTION_STRING=postgresql://host:26257/db
+```
+
+### Deployment Validation
+
+```bash
+# Verify enterprise deployment
+terraform output  # Get deployment URLs
+
+# Test all agent architectures
+curl "https://your-api/smart/chat?q=Hello"
+curl "https://your-api/agent/chat?q=Hello"
+curl "https://your-api/pydantic-agent/chat?q=Hello"
+curl "https://your-api/hybrid-agent/chat?q=Hello"
+
+# Check enterprise features
+curl https://your-api/smart/agents/comparison
+curl https://your-api/metrics
+```
+
+See **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** for complete enterprise setup instructions.
+
+### Enterprise Testing
+
+**Automated Testing**
+```bash
+# Run all enterprise tests
+uv run pytest tests/test_enterprise_database.py -v
+uv run pytest tests/test_enterprise_integration.py -v
+
+# Test database connections
+make test-databases
+
+# Validate full enterprise deployment
+make validate-enterprise
+```
+
+**Manual Testing**
+```bash
+# Follow comprehensive manual testing procedures
+# See MANUAL_TESTING_GUIDE.md for detailed steps
+
+# Quick validation of all agent architectures
+make test-all-agents
+make agent-status
+make demo-integration
+```
+
+**Performance Testing**
+```bash
+# Test concurrent requests and response times
+# Load testing procedures in MANUAL_TESTING_GUIDE.md
+
+# Memory usage monitoring
+# Benchmark procedures documented in testing guide
+```
+
+## 🤖 Multi-Agent Architecture
+
+The system provides **four distinct agent architectures**, each optimized for different use cases:
+
+### Agent Selection Guide
+
+| Use Case | Recommended Agent | Why? |
+|----------|------------------|------|
+| **Simple Q&A** | 🎯 Smart Orchestrator | Auto-routes to optimal agent |
+| **Complex Workflows** | 🔬 LangGraph Agent | Advanced state management |
+| **Structured Output** | 🏗️ Pydantic-AI Agent | Type safety & validation |
+| **Mixed Requirements** | ⚡ Hybrid Agent | Best of both worlds |
+| **General Purpose** | 🎯 Smart Orchestrator | Task-aware routing |
+
+### Architecture Benefits
+
+1. **🎯 Smart Orchestrator**: Automatically chooses the best agent based on task analysis
+   - **Strengths**: Intelligent routing, fallback mechanisms, simplified interface
+   - **Best For**: General-purpose applications, varied workloads, user-facing systems
+
+2. **🔬 LangGraph Agent**: Complex multi-step workflows with state management
+   - **Strengths**: Advanced workflows, conditional logic, mature ecosystem
+   - **Best For**: Multi-agent coordination, state-dependent processing
+
+3. **🏗️ Pydantic-AI Agent**: Type-safe operations with structured output
+   - **Strengths**: Type safety, structured validation, modern patterns, AG-UI ready
+   - **Best For**: Structured responses, frontend integrations, developer experience
+
+4. **⚡ Hybrid Agent**: LangGraph workflows with Pydantic-AI tools
+   - **Strengths**: Complex workflows + type safety, migration-friendly
+   - **Best For**: Production systems, enterprise applications, gradual migrations
+
+### Migration Strategy
+
+- **Start with**: Smart Orchestrator for automatic routing
+- **Specialize**: Use specific agents for performance-critical paths
+- **Migrate**: Gradually move from LangGraph to modern patterns via Hybrid
+- **Scale**: Type-safe operations with Pydantic-AI for new features
+
 ## 📋 Architecture & Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Complete system design and data flow
-- **[PORTFOLIO.md](PORTFOLIO.md)**: Executive summary and achievements  
-- **[CAPSTONE.md](CAPSTONE.md)**: Project specification and requirements
-- **[LEARNINGS.md](LEARNINGS.md)**: Technical insights and best practices
-- **[CHECKPOINT.md](CHECKPOINT.md)**: Development progress and milestones
-
-## 🎓 Learning Journey
-
-This project represents the capstone of an 8-week Python AI backend development study plan:
-
-1. **Phase 0-1**: Environment setup and Python fluency
-2. **Phase 2**: FastAPI backend with typed endpoints  
-3. **Phase 3**: Structured AI output with Instructor
-4. **Phase 4**: RAG pipeline with vector database
-5. **Phase 5**: Agent system with LangGraph
-6. **Phase 6**: Production deployment and observability
-7. **Capstone**: Complete Doc-QA Assistant with citations
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Complete system design and data flow
+- **[PORTFOLIO.md](docs/PORTFOLIO.md)**: Executive summary and achievements  
+- **[CAPSTONE.md](docs/CAPSTONE.md)**: Project specification and requirements
+- **[LEARNINGS.md](docs/LEARNINGS.md)**: Technical insights and best practices
+- **[CHECKPOINT.md](docs/CHECKPOINT.md)**: Development progress and milestones
 
 ## 📊 Evaluation & Metrics
 

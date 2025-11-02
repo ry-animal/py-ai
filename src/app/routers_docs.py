@@ -27,7 +27,9 @@ async def upload_document(
             task = process_document_task.delay(document.id)
             return DocumentUploadResponse(
                 document=document,
-                message=f"Document uploaded successfully. Processing queued with task_id: {task.id}",
+                message=(
+                    f"Document uploaded successfully. Processing queued with " f"task_id: {task.id}"
+                ),
             )
         else:
             # Process immediately
